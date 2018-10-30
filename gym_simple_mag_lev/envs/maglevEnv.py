@@ -67,7 +67,7 @@ class MagLevEnv(gym.Env):
         """
         self.curr_step += 1
         self._take_action(action)
-        
+        done = False
         reward = self._get_reward()
         obs = self._get_state()
         if not self.observation_space.contains(obs[1:]):
@@ -87,7 +87,7 @@ class MagLevEnv(gym.Env):
         -------
         observation (object): the initial observation of the space.
         """
-        self.curr_episode = 1
+        self.curr_episode = 0
         self.action_episode_memory = [[]]
         self.AVP_memory = [[]]
         
@@ -113,12 +113,25 @@ class MagLevEnv(gym.Env):
             dv = ( a * self.timestep )
             dx = ( dv * self.timestep ) + 0.5 * (MagLevEnv.GRAVITY * self.timestep**2) 
             
-            self.current_position += dx
+            #self.current_position += dx
             
             self.AVP_memory[self.curr_episode].append((a0 + a, v0 + dv, x0 + dx))
             self.action_episode_memory[self.curr_episode].append(1)
         else:
-            self.AVP_memory[self.curr_episode].append((0.0, 0.0, 0.0))
+            if self.curr_step == 0:
+                a0 = 0.0
+                v0 = 0.0
+                x0 = 0.0
+            else:
+                a0 = self.AVP_memory[self.curr_episode][self.curr_step-1][0]
+                v0 = self.AVP_memory[self.curr_episode][self.curr_step-1][1]
+                x0 = self.AVP_memory[self.curr_episode][self.curr_step-1][2]
+            
+            a = ( ( 0.0 / self.mass ) - MagLevEnv.GRAVITY )
+            dv = ( a * self.timestep )
+            dx = ( dv * self.timestep ) + 0.5 * (MagLevEnv.GRAVITY * self.timestep**2)
+            
+            self.AVP_memory[self.curr_episode].append((a0 + a , v0 + dv, x0 + dx))
             self.action_episode_memory[self.curr_episode].append(0)
             
     def _get_state(self):
