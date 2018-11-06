@@ -10,7 +10,7 @@ class MagLevEnv(gym.Env):
     
     
     GRAVITY = 9.8
-    FORCE = 10
+    FORCE = 30
     
     
     
@@ -29,7 +29,12 @@ class MagLevEnv(gym.Env):
         self.observation_space = spaces.Box(np.array([0, -100]), np.array([10, 100]), dtype=np.float32)
         
         self.action_episode_memory = []
-        self.AVP_memory = []
+        #self.AVP_memory = []
+        
+        self.acceleration = 0
+        self.velocity = 0
+        self.position = 0
+        
         
                
         #self.reference_once_achieved = False
@@ -89,56 +94,62 @@ class MagLevEnv(gym.Env):
         """
         self.curr_episode = 0
         self.action_episode_memory = [[]]
-        self.AVP_memory = [[]]
+        
+        self.acceleration = 0
+        self.velocity = 0
+        self.position = 0
         
         
-        return np.asarray([0.0,0.0,0.0])
+        return np.asarray([self.acceleration,self.velocity,self.position])
 
     def render(self):
         pass
 
     def _take_action(self, action):
         if action == 1:
-            if self.curr_step == 0:
-                a0 = 0.0
-                v0 = 0.0
-                x0 = 0.0
-            else:
-                a0 = self.AVP_memory[self.curr_episode][self.curr_step-1][0]
-                v0 = self.AVP_memory[self.curr_episode][self.curr_step-1][1]
-                x0 = self.AVP_memory[self.curr_episode][self.curr_step-1][2]
+            
+            a0 = self.acceleration
+            v0 = self.velocity
+            x0 = self.position
                 
             
-            a = ( ( MagLevEnv.FORCE / self.mass ) - MagLevEnv.GRAVITY )
+            da = ( ( MagLevEnv.FORCE / self.mass ) - MagLevEnv.GRAVITY )
+            a = a0 + da 
             dv = ( a * self.timestep )
-            dx = ( dv * self.timestep ) + 0.5 * (MagLevEnv.GRAVITY * self.timestep**2) 
-            
+            v = v0 + dv
+            dx = ( v * self.timestep ) + 0.5 * (MagLevEnv.GRAVITY * self.timestep**2) 
+            x = x0 + dx
             #self.current_position += dx
             
-            self.AVP_memory[self.curr_episode].append((a0 + a, v0 + dv, x0 + dx))
+            self.acceleration = a
+            self.velocity = v
+            self.position = x
+            
             self.action_episode_memory[self.curr_episode].append(1)
         else:
-            if self.curr_step == 0:
-                a0 = 0.0
-                v0 = 0.0
-                x0 = 0.0
-            else:
-                a0 = self.AVP_memory[self.curr_episode][self.curr_step-1][0]
-                v0 = self.AVP_memory[self.curr_episode][self.curr_step-1][1]
-                x0 = self.AVP_memory[self.curr_episode][self.curr_step-1][2]
             
-            a = ( ( 0.0 / self.mass ) - MagLevEnv.GRAVITY )
-            dv = ( a * self.timestep )
+            a0 = self.acceleration
+            v0 = self.velocity
+            x0 = self.position
+            
+            da = ( ( 0.0 / self.mass ) - MagLevEnv.GRAVITY )
+            a = a0 + da 
+            dv = ( da * self.timestep )
+            v = v0 + dv
             dx = ( dv * self.timestep ) + 0.5 * (MagLevEnv.GRAVITY * self.timestep**2)
+            x = x0 + dx
             
-            self.AVP_memory[self.curr_episode].append((a0 + a , v0 + dv, x0 + dx))
+            self.acceleration = a
+            self.velocity = v
+            self.position = x
+            
             self.action_episode_memory[self.curr_episode].append(0)
             
     def _get_state(self):
         
         """Get the observation."""
         
-        ob = np.asarray(list(self.AVP_memory[self.curr_episode][self.curr_step]))
+        ob = np.asarray(list((self.acceleration,self.velocity,self.position)))
         
         
         return ob
