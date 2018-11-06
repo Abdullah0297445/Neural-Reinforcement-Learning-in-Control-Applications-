@@ -10,7 +10,7 @@ class MagLevEnv(gym.Env):
     
     
     GRAVITY = 9.8
-    FORCE = 30
+    FORCE = GRAVITY*2
     
     
     
@@ -33,7 +33,7 @@ class MagLevEnv(gym.Env):
         
         self.acceleration = 0
         self.velocity = 0
-        self.position = 0
+        self.position = 10
         
         
                
@@ -95,9 +95,7 @@ class MagLevEnv(gym.Env):
         self.curr_episode = 0
         self.action_episode_memory = [[]]
         
-        self.acceleration = 0
-        self.velocity = 0
-        self.position = 0
+
         
         
         return np.asarray([self.acceleration,self.velocity,self.position])
@@ -106,44 +104,28 @@ class MagLevEnv(gym.Env):
         pass
 
     def _take_action(self, action):
-        if action == 1:
+        
             
-            a0 = self.acceleration
-            v0 = self.velocity
-            x0 = self.position
-                
+        
+        v0 = self.velocity
+        x0 = self.position
             
-            da = ( ( MagLevEnv.FORCE / self.mass ) - MagLevEnv.GRAVITY )
-            a = a0 + da 
-            dv = ( a * self.timestep )
-            v = v0 + dv
-            dx = ( v * self.timestep ) + 0.5 * (MagLevEnv.GRAVITY * self.timestep**2) 
-            x = x0 + dx
-            #self.current_position += dx
-            
-            self.acceleration = a
-            self.velocity = v
-            self.position = x
-            
-            self.action_episode_memory[self.curr_episode].append(1)
-        else:
-            
-            a0 = self.acceleration
-            v0 = self.velocity
-            x0 = self.position
-            
-            da = ( ( 0.0 / self.mass ) - MagLevEnv.GRAVITY )
-            a = a0 + da 
-            dv = ( da * self.timestep )
-            v = v0 + dv
-            dx = ( dv * self.timestep ) + 0.5 * (MagLevEnv.GRAVITY * self.timestep**2)
-            x = x0 + dx
-            
-            self.acceleration = a
-            self.velocity = v
-            self.position = x
-            
-            self.action_episode_memory[self.curr_episode].append(0)
+        
+        
+        a = ( ( action*MagLevEnv.FORCE / self.mass ) - MagLevEnv.GRAVITY )
+         
+        dv = ( a * self.timestep )
+        v = v0 + dv
+        dx = ( v0 * self.timestep ) + 0.5 * (a * self.timestep**2) 
+        x = x0 + dx
+        #self.current_position += dx
+        
+        self.acceleration = a
+        self.velocity = v
+        self.position = x
+        
+        self.action_episode_memory[self.curr_episode].append(1)
+        
             
     def _get_state(self):
         
