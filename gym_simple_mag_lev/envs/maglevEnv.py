@@ -14,7 +14,7 @@ class MagLevEnv(gym.Env):
     
     
     
-    def __init__(self, mass = 1, referencepoint = 7, timestep=0.01):
+    def __init__(self, initialpos=10, initialvel=0, mass = 1, referencepoint = 7, timestep=0.01, rewardtype='parabolic'):
         
         self.__version__ = "0.0.1.0"
         logging.info("MAGLevEnv - Version {}".format(self.__version__))
