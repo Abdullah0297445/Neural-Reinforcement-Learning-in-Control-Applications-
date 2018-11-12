@@ -18,27 +18,26 @@ class MagLevEnv(gym.Env):
         
         self.__version__ = "0.0.1.0"
         logging.info("MAGLevEnv - Version {}".format(self.__version__))
+        
         self.timestep = timestep
         self.mass = mass
-        self.curr_episode = -1
-        self.curr_step = -1
+        
         
         self.action_space = spaces.Discrete(2)
-        
-        
-        self.observation_space = spaces.Box(np.array([0, -100]), np.array([10, 100]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-9.9,-100,0]), np.array([9.9,100, 10]), dtype=np.float32)
         
         self.action_episode_memory = []
-        #self.AVP_memory = []
         
         self.acceleration = 0
-        self.velocity = 0
-        self.position = 10
+        self.velocity = initialvel 
+        self.position = initialpos
         
+        self.initialpos = initialpos
+        self.initialvel = initialvel
         
-               
-        #self.reference_once_achieved = False
-        #self.current_position = 0.00
+        #self.observation = []
+        self.rewardtype = rewardtype
+
         self.referencepoint = referencepoint
         
     def step(self, action):
@@ -70,15 +69,13 @@ class MagLevEnv(gym.Env):
                  However, official evaluations of your agent are not allowed to
                  use this for learning.
         """
-        self.curr_step += 1
         self._take_action(action)
         done = False
         reward = self._get_reward()
         obs = self._get_state()
-        if not self.observation_space.contains(obs[1:]):
+        
+        if not self.observation_space.contains(obs):
             done = True
-            #self.curr_episode += 1
-            self.curr_step = -1
         
         return obs, reward, done, {}
         
@@ -92,20 +89,30 @@ class MagLevEnv(gym.Env):
         -------
         observation (object): the initial observation of the space.
         """
-        self.curr_episode = 0
-        self.action_episode_memory = [[]]
         
-
+        self.action_episode_memory = []
         
-        
+        self.acceleration = 0
+        self.velocity = self.initialvel
+        self.position = self.initialpos
+       
         return np.asarray([self.acceleration,self.velocity,self.position])
 
     def render(self):
-        pass
+        
+        plt.figure(0)
+        circle = plt.Circle((0,self.position), radius= 0.6, color = 'r')
+        ax=plt.gca()
+        ax.clear()
+        ax.add_patch(circle)
+        plt.axis('scaled')
+        plt.xlim(-15,15)
+        plt.ylim(-15,15)
+        
+        plt.pause(0.00001)
+        plt.show()
 
     def _take_action(self, action):
-        
-            
         
         v0 = self.velocity
         x0 = self.position
@@ -118,27 +125,37 @@ class MagLevEnv(gym.Env):
         v = v0 + dv
         dx = ( v0 * self.timestep ) + 0.5 * (a * self.timestep**2) 
         x = x0 + dx
-        #self.current_position += dx
+    
         
         self.acceleration = a
         self.velocity = v
         self.position = x
+        #self.observation.append(np.asarray(list((self.acceleration,self.velocity,self.position))))
         
-        self.action_episode_memory[self.curr_episode].append(1)
+        self.action_episode_memory.append(action)
         
             
     def _get_state(self):
         
         """Get the observation."""
         
-        ob = np.asarray(list((self.acceleration,self.velocity,self.position)))
+        obs = np.asarray(list((self.acceleration,self.velocity,self.position)))
         
         
-        return ob
+        return obs
             
             
                              
         
 
     def _get_reward(self):
-        pass
+        if float(self.position) >= 4.0 and float(self.position) <= 10.0:
+            if self.rewardtype == 'parabolic':
+                reward = (1-(1/9)*abs(self.position-self.referencepoint)**2)
+            else:
+                reward = (1-(1/3)*abs(self.position-self.referencepoint))
+            
+        else:
+            reward = -1
+            
+        return reward
