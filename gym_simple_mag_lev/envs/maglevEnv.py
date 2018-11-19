@@ -4,7 +4,7 @@ from gym.utils import seeding
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
-
+import random
 
 class MagLevEnv(gym.Env):
     metadata = {'render.modes': ['human']}
@@ -15,31 +15,29 @@ class MagLevEnv(gym.Env):
     
     
     
-    def __init__(self, initialpos=10, initialvel=0, mass = 1, referencepoint = 7, timestep=0.01, rewardtype='parabolic'):
+    def __init__(self):
         
         self.__version__ = "0.0.1.0"
         logging.info("MAGLevEnv - Version {}".format(self.__version__))
         
-        self.timestep = timestep
-        self.mass = mass
+        self.timestep = 0.01
+        self.mass = 1
         
         
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-9.9,-100,0]), np.array([9.9,100, 10]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-100,-5]), np.array([100, 15]), dtype=np.float32)
         
-        self.action_episode_memory = []
+        #self.action_episode_memory = []
         
         self.acceleration = 0
-        self.velocity = initialvel 
-        self.position = initialpos
+        self.velocity = 0 
+        self.position = 0
         
-        self.initialpos = initialpos
-        self.initialvel = initialvel
         
         #self.observation = []
-        self.rewardtype = rewardtype
+        self.rewardtype = 'parabolic'
 
-        self.referencepoint = referencepoint
+        self.referencepoint = 7
         
     def step(self, action):
         """
@@ -90,14 +88,20 @@ class MagLevEnv(gym.Env):
         -------
         observation (object): the initial observation of the space.
         """
-        
-        self.action_episode_memory = []
+        start = random.randint(0,10)
+        #self.action_episode_memory = []
         
         self.acceleration = 0
-        self.velocity = self.initialvel
-        self.position = self.initialpos
-       
-        return np.asarray([self.acceleration,self.velocity,self.position])
+        self.velocity = 0
+        self.position = start
+        #self.referencepoint = random.randint(0,10)
+        #while self.referencepoint == start :
+        #    self.referencepoint = random.randint(0,10)
+            
+        #print("Reference Point: ", self.referencepoint)
+        print("STARTING POINT: ", start)
+        
+        return np.asarray([self.velocity,self.position])
 
     def render(self):
         
@@ -116,9 +120,9 @@ class MagLevEnv(gym.Env):
     def _take_action(self, action):
         
         v0 = self.velocity
-        x0 = self.position
-            
-        
+        x0 = self.position   
+
+
         
         a = ( ( action*MagLevEnv.FORCE / self.mass ) - MagLevEnv.GRAVITY )
          
@@ -133,14 +137,14 @@ class MagLevEnv(gym.Env):
         self.position = x
         #self.observation.append(np.asarray(list((self.acceleration,self.velocity,self.position))))
         
-        self.action_episode_memory.append(action)
+        #self.action_episode_memory.append(action)
         
             
     def _get_state(self):
         
         """Get the observation."""
         
-        obs = np.asarray(list((self.acceleration,self.velocity,self.position)))
+        obs = np.asarray(list((self.velocity,self.position)))
         
         
         return obs
@@ -150,13 +154,21 @@ class MagLevEnv(gym.Env):
         
 
     def _get_reward(self):
-        if float(self.position) >= 4.0 and float(self.position) <= 10.0:
-            if self.rewardtype == 'parabolic':
-                reward = (1-(1/9)*abs(self.position-self.referencepoint)**2)
-            else:
-                reward = (1-(1/3)*abs(self.position-self.referencepoint))
-            
-        else:
-            reward = -1
-            
+        reward = np.exp(-2*np.abs(self.position-self.referencepoint))
         return reward
+#        if np.abs(self.position-self.referencepoint)<2:
+#            return 1.0
+#        else:
+#            return -0.001
+        #return reward
+    
+#        if float(self.position) >= self.referencepoint-3 and float(self.position) <= self.referencepoint+3:
+#            if self.rewardtype == 'parabolic':
+#                reward = (1-(1/9)*abs(self.position-self.referencepoint)**2)
+#            else:
+#                reward = (1-(1/3)*abs(self.position-self.referencepoint))
+#            
+#        else:
+#            reward = 0
+#            
+#        return reward
