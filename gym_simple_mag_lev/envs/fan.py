@@ -18,11 +18,11 @@ from maglevEnv import MagLevEnv
 import numpy as np
 
 # hyper parameters
-EPISODES = 400  # number of episodes
+EPISODES = 700  # number of episodes
 EPS_START = 0.9  # e-greedy threshold start value
-EPS_END = 0.01  # e-greedy threshold end value
+EPS_END = 0.10 # e-greedy threshold end value
 EPS_DECAY = 200  # e-greedy threshold decay
-GAMMA = 0.70  # Q-learning discount factor
+GAMMA = 0.50  # Q-learning discount factor
 LR = 0.0005  # NN optimizer learning rate
 HIDDEN_LAYER = 24  # NN hidden layer size
 BATCH_SIZE = 128  # Q-learning batch size
@@ -60,14 +60,14 @@ class Network(nn.Module):
         self.l3 = nn.Linear(8, 2)
 
     def forward(self, x):
-        x = F.sigmoid(self.l1(x))
+        x = self.l1(x)
         x = F.relu(self.l2(x))
         x = self.l3(x)
         return x
 
 env = MagLevEnv()
-env.initialpos = 6.0
-env.referencepoint = 5.0
+#env.initialpos = 6.0
+#env.referencepoint = 5.0
 
 model = Network()
 if use_cuda:
@@ -79,11 +79,11 @@ episode_durations = []
 
 
 def select_action(state):
-    #global steps_done
+    global steps_done
     sample = random.random()
-    #eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * steps_done / EPS_DECAY)
-    #steps_done += 1
-    if sample > GAMMA:
+    eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * steps_done / EPS_DECAY)
+    steps_done += 1
+    if sample > eps_threshold:
         return model(Variable(state, volatile=True).type(FloatTensor)).data.max(1)[1].view(1, 1)
     else:
         return LongTensor([[random.randrange(2)]])
@@ -113,17 +113,18 @@ def run_episode(e, environment):
 
         state = next_state
 
-        if done :
+        if done or steps > 1000:
             print("Episode %s finished after %s steps" %(e, steps))
             episode_durations.append(steps)
-            #plot_durations()
+            plot_durations()
             break
 
 
 def learn():
+    global GAMMA
     if len(memory) < BATCH_SIZE:
         return
-
+    
     # random transition batch is taken from experience replay memory
     transitions = memory.sample(BATCH_SIZE)
     batch_state, batch_action, batch_next_state, batch_reward = zip(*transitions)
@@ -137,6 +138,8 @@ def learn():
     current_q_values = model(batch_state).gather(1, batch_action)
     # expected Q values are estimated from actions which gives maximum Q value
     max_next_q_values = model(batch_next_state).detach().max(1)[0]
+        
+
     expected_q_values = batch_reward + (GAMMA * max_next_q_values)
 
     # loss is measured from error between current and newly expected Q values
@@ -148,13 +151,14 @@ def learn():
     optimizer.step()
 
 
+
 def plot_durations():
     plt.figure(2)
     plt.clf()
     durations_t = torch.FloatTensor(episode_durations)
     plt.title('Training...')
     plt.xlabel('Episode')
-    plt.ylabel('Duration') 
+    plt.ylabel('Duration')
     plt.plot(durations_t.numpy())
     # take 100 episode averages and plot them too
     if len(durations_t) >= 100:
@@ -165,12 +169,14 @@ def plot_durations():
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
+emin = 100
+emax = 700
+gmin = GAMMA
+gmax = 0.9
 for e in range(EPISODES):
-    GAMMA = 0.05
-    if e%2 == 0:
-        GAMMA = GAMMA + 0.01
-        if GAMMA >= 0.90:
-            GAMMA = 0.90
+    if e>emin:
+        GAMMA = min(gmax,gmin+(e-emin)*(gmax-gmin)/(emax-emin))
+    print(GAMMA)
     run_episode(e, env)
 
 print('Complete')

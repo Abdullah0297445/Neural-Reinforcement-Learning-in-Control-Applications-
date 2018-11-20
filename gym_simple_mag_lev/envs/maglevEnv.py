@@ -25,7 +25,7 @@ class MagLevEnv(gym.Env):
         
         
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-100,-5]), np.array([100, 15]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-100,-0.1]), np.array([100, 10]), dtype=np.float32)
         
         #self.action_episode_memory = []
         
@@ -93,13 +93,13 @@ class MagLevEnv(gym.Env):
         
         self.acceleration = 0
         self.velocity = 0
-        self.position = start
+        self.position = 0 
         #self.referencepoint = random.randint(0,10)
         #while self.referencepoint == start :
         #    self.referencepoint = random.randint(0,10)
             
         #print("Reference Point: ", self.referencepoint)
-        print("STARTING POINT: ", start)
+        #print("STARTING POINT: ", start)
         
         return np.asarray([self.velocity,self.position])
 
