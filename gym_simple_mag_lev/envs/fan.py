@@ -1,9 +1,3 @@
-# Solution of Open AI gym environment "Cartpole-v0" (https://gym.openai.com/envs/CartPole-v0) using DQN and Pytorch.
-# It is is slightly modified version of Pytorch DQN tutorial from
-# http://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html.
-# The main difference is that it does not take rendered screen as input but it simply uses observation values from the \
-# environment.
-
 import gym
 from gym import wrappers
 import random
@@ -18,14 +12,15 @@ from maglevEnv import MagLevEnv
 import numpy as np
 
 # hyper parameters
-EPISODES = 700  # number of episodes
+EPISODES = 50  # number of episodes
 EPS_START = 0.9  # e-greedy threshold start value
-EPS_END = 0.10 # e-greedy threshold end value
-EPS_DECAY = 200  # e-greedy threshold decay
-GAMMA = 0.50  # Q-learning discount factor
-LR = 0.0005  # NN optimizer learning rate
-HIDDEN_LAYER = 24  # NN hidden layer size
-BATCH_SIZE = 128  # Q-learning batch size
+EPS_END = 0.01 # e-greedy threshold end value
+EPS_DECAY = 1000  # e-greedy threshold decay
+GAMMA = 0.98  # Q-learning discount factor
+LR = 0.005  # NN optimizer learning rate
+HIDDEN_LAYER = 200  # NN hidden layer size
+BATCH_SIZE = 64  # Q-learning batch size
+ALPHA = 0.005
 
 # if gpu is to be used
 use_cuda = torch.cuda.is_available()
@@ -55,19 +50,19 @@ class ReplayMemory:
 class Network(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
-        self.l1 = nn.Linear(2, 16)
-        self.l2 = nn.Linear(16, 8)
-        self.l3 = nn.Linear(8, 2)
+        self.l1 = nn.Linear(2, HIDDEN_LAYER)
+        self.l2 = nn.Linear(HIDDEN_LAYER, 2)
+        
+        #self.l3 = nn.Linear(8, 2)
 
     def forward(self, x):
         x = self.l1(x)
-        x = F.relu(self.l2(x))
-        x = self.l3(x)
+        x = F.relu(x)
+        x = self.l2(x)
         return x
 
 env = MagLevEnv()
-#env.initialpos = 6.0
-#env.referencepoint = 5.0
+
 
 model = Network()
 if use_cuda:
@@ -76,6 +71,7 @@ memory = ReplayMemory(10000)
 optimizer = optim.Adam(model.parameters(), LR)
 steps_done = 0
 episode_durations = []
+abs_from_target = []
 
 
 def select_action(state):
@@ -92,7 +88,7 @@ def select_action(state):
 def run_episode(e, environment):
     state = environment.reset()
     steps = 0
-    while True:
+    while steps<300:
         steps += 1
         #environment.render()
         action = select_action(FloatTensor([state]))
@@ -113,15 +109,16 @@ def run_episode(e, environment):
 
         state = next_state
 
-        if done or steps > 1000:
+        if steps == 299:
             print("Episode %s finished after %s steps" %(e, steps))
             episode_durations.append(steps)
+            abs_from_target.append(abs(env.position - env.referencepoint))
             plot_durations()
-            break
+            
 
 
 def learn():
-    global GAMMA
+    
     if len(memory) < BATCH_SIZE:
         return
     
@@ -132,10 +129,10 @@ def learn():
     batch_state = Variable(torch.cat(batch_state))
     batch_action = Variable(torch.cat(batch_action))
     batch_reward = Variable(torch.cat(batch_reward))
-    batch_next_state = Variable(torch.cat(batch_next_state))
+    batch_next_state = Variable(torch.cat(batch_next_state),requires_grad=False)
 
     # current Q values are estimated by NN for all actions
-    current_q_values = model(batch_state).gather(1, batch_action)
+    current_q_values = model(batch_state).gather(1,batch_action)
     # expected Q values are estimated from actions which gives maximum Q value
     max_next_q_values = model(batch_next_state).detach().max(1)[0]
         
@@ -155,28 +152,21 @@ def learn():
 def plot_durations():
     plt.figure(2)
     plt.clf()
-    durations_t = torch.FloatTensor(episode_durations)
+    distance_y = torch.FloatTensor(abs_from_target)
     plt.title('Training...')
     plt.xlabel('Episode')
-    plt.ylabel('Duration')
-    plt.plot(durations_t.numpy())
+    plt.ylabel('Distance_FROM_Target')
+    plt.plot(distance_y.numpy())
     # take 100 episode averages and plot them too
-    if len(durations_t) >= 100:
-        means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+    if len(distance_y) >= 100:
+        means = distance_y.unfold(0, 100, 1).mean(1).view(-1)
         means = torch.cat((torch.zeros(99), means))
         plt.plot(means.numpy())
 
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
-emin = 100
-emax = 700
-gmin = GAMMA
-gmax = 0.9
 for e in range(EPISODES):
-    if e>emin:
-        GAMMA = min(gmax,gmin+(e-emin)*(gmax-gmin)/(emax-emin))
-    print(GAMMA)
     run_episode(e, env)
 
 print('Complete')
@@ -184,6 +174,8 @@ print('Complete')
 #
 1/0
 state = env.reset()
+env.initialpos = 0.0
+
 for i in range(600):
     action = select_action(FloatTensor([state]))
     a = action.data.numpy()[0,0]

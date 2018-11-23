@@ -23,19 +23,15 @@ class MagLevEnv(gym.Env):
         self.timestep = 0.01
         self.mass = 1
         
-        
+        #Observation and Action spaces.
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-100,-0.1]), np.array([100, 10]), dtype=np.float32)
-        
-        #self.action_episode_memory = []
+        self.observation_space = spaces.Box(np.array([-20.0,-0.1]), np.array([20.0, 10.0]), dtype=np.float32)
+    
         
         self.acceleration = 0
         self.velocity = 0 
         self.position = 0
         
-        
-        #self.observation = []
-        self.rewardtype = 'parabolic'
 
         self.referencepoint = 7
         
@@ -44,7 +40,7 @@ class MagLevEnv(gym.Env):
 
         Parameters
         ----------
-        action :
+        action : any action. In our case '1' or '0' as int value.
 
         Returns
         -------
@@ -68,6 +64,7 @@ class MagLevEnv(gym.Env):
                  However, official evaluations of your agent are not allowed to
                  use this for learning.
         """
+        
         self._take_action(action)
         done = False
         reward = self._get_reward()
@@ -84,26 +81,35 @@ class MagLevEnv(gym.Env):
     def reset(self):
         """
         Reset the state of the environment and returns an initial observation.
-        Returns
+        
+        Returns a numpy array ([velocity,position])
         -------
         observation (object): the initial observation of the space.
         """
-        start = random.randint(0,10)
-        #self.action_episode_memory = []
+        
+        #Randomly set position of our object(solid metallic ball).
+        start = random.randint(1,9)
+        self.position = start
+        
+        
+        #Randomly set velocity of our object(solid metallic ball).
+        start = random.randint(-4,4)
+        self.velocity = start
         
         self.acceleration = 0
-        self.velocity = 0
-        self.position = 0 
-        #self.referencepoint = random.randint(0,10)
-        #while self.referencepoint == start :
-        #    self.referencepoint = random.randint(0,10)
-            
-        #print("Reference Point: ", self.referencepoint)
-        #print("STARTING POINT: ", start)
+        
         
         return np.asarray([self.velocity,self.position])
 
     def render(self):
+        
+        """
+        Render on screen the current state of the environment.
+        
+        Returns Nothing.
+        -------
+        Parameters: Empty
+        """
         
         plt.figure(0)
         circle = plt.Circle((0,self.position), radius= 0.6, color = 'r')
@@ -119,10 +125,21 @@ class MagLevEnv(gym.Env):
 
     def _take_action(self, action):
         
+        """
+        Virtually performs the action using the physics of our problem. It is a helper function used by our Step function.
+        
+        If choosen action is '1' then Force is applied for 0.01 sec if action is '0' no force is applied in that timestep (0.01 sec).
+        
+        This method updates the values of current_position and current_velocity in our environment.
+        
+        Returns Nothing.
+        -------
+        
+        Parameters: Action '1' or '2' as an int value. 
+        """
+        
         v0 = self.velocity
         x0 = self.position   
-
-
         
         a = ( ( action*MagLevEnv.FORCE / self.mass ) - MagLevEnv.GRAVITY )
          
@@ -135,14 +152,20 @@ class MagLevEnv(gym.Env):
         self.acceleration = a
         self.velocity = v
         self.position = x
-        #self.observation.append(np.asarray(list((self.acceleration,self.velocity,self.position))))
-        
-        #self.action_episode_memory.append(action)
-        
             
     def _get_state(self):
         
-        """Get the observation."""
+        """
+        Get the current state of the environment (observation).
+        
+        State in our case is just a numpy array of ([current_velocity, current_position])
+        
+        It is a helper function for our Step method.
+        
+        Returns a numpy array ([velocity,position])
+        -------
+        Parameters: Empty.
+        """
         
         obs = np.asarray(list((self.velocity,self.position)))
         
@@ -154,21 +177,12 @@ class MagLevEnv(gym.Env):
         
 
     def _get_reward(self):
-        reward = np.exp(-2*np.abs(self.position-self.referencepoint))
+        
+        reward = -np.abs(self.position-self.referencepoint)
+        if self.position-self.referencepoint < 0.5:
+            
+            
+            reward += 2
+        else:
+            return reward
         return reward
-#        if np.abs(self.position-self.referencepoint)<2:
-#            return 1.0
-#        else:
-#            return -0.001
-        #return reward
-    
-#        if float(self.position) >= self.referencepoint-3 and float(self.position) <= self.referencepoint+3:
-#            if self.rewardtype == 'parabolic':
-#                reward = (1-(1/9)*abs(self.position-self.referencepoint)**2)
-#            else:
-#                reward = (1-(1/3)*abs(self.position-self.referencepoint))
-#            
-#        else:
-#            reward = 0
-#            
-#        return reward
