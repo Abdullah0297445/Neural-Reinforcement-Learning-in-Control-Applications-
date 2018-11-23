@@ -18,7 +18,7 @@ EPS_END = 0.01 # e-greedy threshold end value
 EPS_DECAY = 1000  # e-greedy threshold decay
 GAMMA = 0.98  # Q-learning discount factor
 LR = 0.005  # NN optimizer learning rate
-HIDDEN_LAYER = 200  # NN hidden layer size
+HIDDEN_LAYER = 300  # NN hidden layer size
 BATCH_SIZE = 64  # Q-learning batch size
 ALPHA = 0.005
 
@@ -158,10 +158,10 @@ def plot_durations():
     plt.ylabel('Distance_FROM_Target')
     plt.plot(distance_y.numpy())
     # take 100 episode averages and plot them too
-    if len(distance_y) >= 100:
-        means = distance_y.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+#    if len(distance_y) >= 100:
+#        means = distance_y.unfold(0, 100, 1).mean(1).view(-1)
+#        means = torch.cat((torch.zeros(99), means))
+#        plt.plot(means.numpy())
 
     plt.pause(0.001)  # pause a bit so that plots are updated
 
@@ -174,7 +174,7 @@ print('Complete')
 #
 1/0
 state = env.reset()
-env.initialpos = 0.0
+
 
 for i in range(600):
     action = select_action(FloatTensor([state]))

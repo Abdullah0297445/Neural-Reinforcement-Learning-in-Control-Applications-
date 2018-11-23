@@ -4,6 +4,7 @@ from gym.utils import seeding
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
+
 import random
 
 class MagLevEnv(gym.Env):
@@ -33,7 +34,7 @@ class MagLevEnv(gym.Env):
         self.position = 0
         
 
-        self.referencepoint = 7
+        self.referencepoint = 6
         
     def step(self, action):
         """
@@ -112,13 +113,19 @@ class MagLevEnv(gym.Env):
         """
         
         plt.figure(0)
-        circle = plt.Circle((0,self.position), radius= 0.6, color = 'r')
+        circle = plt.Circle((0,self.position), radius= 0.5, color = 'black')
+        #line = plt.Line2D(0,self.referencepoint,3)
         ax=plt.gca()
         ax.clear()
+        
+        #plt.fill_betweenx(self.referencepoint,-3,3,linewidth=3,color = 'gray')
+        plt.hlines(self.referencepoint,-3,3,'gray',linewidth = 3)
         ax.add_patch(circle)
+        #ax.add_patch(line)
+        
         plt.axis('scaled')
-        plt.xlim(-15,15)
-        plt.ylim(-15,15)
+        plt.xlim(-3,3)
+        plt.ylim(-2,12)
         
         plt.pause(0.00001)
         plt.show()
@@ -179,10 +186,12 @@ class MagLevEnv(gym.Env):
     def _get_reward(self):
         
         reward = -np.abs(self.position-self.referencepoint)
-        if self.position-self.referencepoint < 0.5:
+        if abs(self.position-self.referencepoint) <= 0.5:
             
             
             reward += 2
+#        elif self.position-self.referencepoint <= 0.3:
+#            reward += 2
         else:
             return reward
         return reward
