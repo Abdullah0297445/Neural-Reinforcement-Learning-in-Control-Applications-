@@ -98,7 +98,7 @@ class MagLevEnv(gym.Env):
         
         self.position = x
         
-        x = random.randint(1,9)
+        x = random.randint(0,10)
         self.referencepoint = x 
         
         #Randomly set velocity of our object(solid metallic ball).

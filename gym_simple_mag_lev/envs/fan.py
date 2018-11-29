@@ -17,7 +17,7 @@ from maglevEnv import MagLevEnv
 import numpy as np
 
 # hyper parameters
-EPISODES = 90  # number of episodes
+EPISODES = 70  # number of episodes
 EPS_START = 0.9  # e-greedy threshold start value
 EPS_END = 0.01 # e-greedy threshold end value
 EPS_DECAY = 1000  # e-greedy threshold decay
@@ -110,7 +110,7 @@ def run_episode(e, environment):
 
         state = next_state
 
-        if steps > 500:
+        if steps > 300:
             print("Episode %s Final Position Error %s " %(e, np.abs(next_state[1]-ref)))
             episode_durations.append(np.abs(next_state[1]-ref))
             plotError()
@@ -183,7 +183,7 @@ state = env.reset()
 env.position = 0
 env.velocity = -2.0
 env.mass = 1.0
-env.referencepoint = 2
+env.referencepoint = 9
 state = [env.velocity,env.position,env.referencepoint]
 S = [state] #States history for test
 for i in range(500):    
