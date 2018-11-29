@@ -62,7 +62,7 @@ class Network(nn.Module):
         return x
 
 env = MagLevEnv()
-env.referencepoint = 5.0
+env.referencepoint = 8.0
 
 model = Network()
 if use_cuda:
@@ -85,8 +85,10 @@ def select_action(state):
 
 
 def run_episode(e, environment):
+    
+    state = environment.reset() 
     ref = environment.referencepoint
-    state = environment.reset()    
+    state = np.append(state,[ref],axis=0)
     steps = 0
     while True:
         steps += 1
@@ -94,7 +96,8 @@ def run_episode(e, environment):
         action = select_action(FloatTensor([state]))
         a = action.data.numpy()[0,0]
         next_state, reward, done, _ = environment.step(a)
-
+        #ref = environment.referencepoint
+        next_state = np.append(next_state,[ref],axis=0)
 
 
         memory.push((FloatTensor([state]),
@@ -177,18 +180,19 @@ plt.pause(0.5)
 #%% TESTING 
 
 state = env.reset()
-env.position = 3
-env.velocity = -6.0
+env.position = 0
+env.velocity = -2.0
 env.mass = 1.0
-env.referencepoint = 6
-state = [env.referencepoint,env.velocity,env.position]
+env.referencepoint = 2
+state = [env.velocity,env.position,env.referencepoint]
 S = [state] #States history for test
 for i in range(500):    
     action = select_action(FloatTensor([state]))
     a = action.data.numpy()[0,0]
     state,reward,done,_ = env.step(a)
+    state=np.append(state,[env.referencepoint],axis=0) 
     S.append(state)
-    print(i,state,a,reward,done)
+    print(i,env._get_state(),state[2],a,reward,done)
     if done:
         print("out of bounds")
     env.render()
