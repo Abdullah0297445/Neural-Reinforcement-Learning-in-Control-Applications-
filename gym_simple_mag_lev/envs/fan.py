@@ -1,5 +1,10 @@
-import gym
-from gym import wrappers
+# -*- coding: utf-8 -*-
+"""
+Created on Mon Aug 13 15:22:11 2018
+A simple example of a magnetic levitation system controlled using Reinforcement Learning
+@author: Fayyaz Minhas
+"""
+
 import random
 import math
 import torch
@@ -12,15 +17,13 @@ from maglevEnv import MagLevEnv
 import numpy as np
 
 # hyper parameters
-EPISODES = 50  # number of episodes
+EPISODES = 90  # number of episodes
 EPS_START = 0.9  # e-greedy threshold start value
 EPS_END = 0.01 # e-greedy threshold end value
 EPS_DECAY = 1000  # e-greedy threshold decay
 GAMMA = 0.98  # Q-learning discount factor
 LR = 0.005  # NN optimizer learning rate
-HIDDEN_LAYER = 300  # NN hidden layer size
 BATCH_SIZE = 64  # Q-learning batch size
-ALPHA = 0.005
 
 # if gpu is to be used
 use_cuda = torch.cuda.is_available()
@@ -50,19 +53,16 @@ class ReplayMemory:
 class Network(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
-        self.l1 = nn.Linear(2, HIDDEN_LAYER)
-        self.l2 = nn.Linear(HIDDEN_LAYER, 2)
-        
-        #self.l3 = nn.Linear(8, 2)
+        self.l1 = nn.Linear(3, 200)
+        self.l3 = nn.Linear(200, 2)
 
     def forward(self, x):
-        x = self.l1(x)
-        x = F.relu(x)
-        x = self.l2(x)
+        x = F.relu(self.l1(x))
+        x = (self.l3(x))
         return x
 
 env = MagLevEnv()
-
+env.referencepoint = 5.0
 
 model = Network()
 if use_cuda:
@@ -71,7 +71,6 @@ memory = ReplayMemory(10000)
 optimizer = optim.Adam(model.parameters(), LR)
 steps_done = 0
 episode_durations = []
-abs_from_target = []
 
 
 def select_action(state):
@@ -86,18 +85,17 @@ def select_action(state):
 
 
 def run_episode(e, environment):
-    state = environment.reset()
+    ref = environment.referencepoint
+    state = environment.reset()    
     steps = 0
-    while steps<300:
+    while True:
         steps += 1
-        #environment.render()
+        
         action = select_action(FloatTensor([state]))
         a = action.data.numpy()[0,0]
         next_state, reward, done, _ = environment.step(a)
 
-        # zero reward when attempt ends
-#        if done and steps < 200:
-#            reward = 0
+
 
         memory.push((FloatTensor([state]),
                      action,  # action is already a tensor
@@ -109,16 +107,16 @@ def run_episode(e, environment):
 
         state = next_state
 
-        if steps == 299:
-            print("Episode %s finished after %s steps" %(e, steps))
-            episode_durations.append(steps)
-            abs_from_target.append(abs(env.position - env.referencepoint))
-            plot_durations()
+        if steps > 500:
+            print("Episode %s Final Position Error %s " %(e, np.abs(next_state[1]-ref)))
+            episode_durations.append(np.abs(next_state[1]-ref))
+            plotError()
             
+            break
 
 
 def learn():
-    
+    global GAMMA
     if len(memory) < BATCH_SIZE:
         return
     
@@ -129,10 +127,10 @@ def learn():
     batch_state = Variable(torch.cat(batch_state))
     batch_action = Variable(torch.cat(batch_action))
     batch_reward = Variable(torch.cat(batch_reward))
-    batch_next_state = Variable(torch.cat(batch_next_state),requires_grad=False)
+    batch_next_state = Variable(torch.cat(batch_next_state))
 
     # current Q values are estimated by NN for all actions
-    current_q_values = model(batch_state).gather(1,batch_action)
+    current_q_values = model(batch_state).gather(1, batch_action)
     # expected Q values are estimated from actions which gives maximum Q value
     max_next_q_values = model(batch_next_state).detach().max(1)[0]
         
@@ -149,36 +147,62 @@ def learn():
 
 
 
-def plot_durations():
+def plotError():
     plt.figure(2)
     plt.clf()
-    distance_y = torch.FloatTensor(abs_from_target)
-    plt.title('Training...')
+    durations_t = torch.FloatTensor(episode_durations)
+    plt.title("Total Steps Done : " + str(steps_done))
     plt.xlabel('Episode')
-    plt.ylabel('Distance_FROM_Target')
-    plt.plot(distance_y.numpy())
+    plt.ylabel('Final Position Error')
+    plt.plot(durations_t.numpy())
     # take 100 episode averages and plot them too
-#    if len(distance_y) >= 100:
-#        means = distance_y.unfold(0, 100, 1).mean(1).view(-1)
-#        means = torch.cat((torch.zeros(99), means))
+#    H = 10
+#    if len(durations_t) >= H:
+#        means = durations_t.unfold(0, H, 1).mean(1).view(-1)
+#        means = torch.cat((torch.zeros(H-1), means))
 #        plt.plot(means.numpy())
 
     plt.pause(0.001)  # pause a bit so that plots are updated
 
 
+
 for e in range(EPISODES):
     run_episode(e, env)
-
+    
 print('Complete')
 #env.render(close=True)
 #
-1/0
+plt.pause(0.5)
+
+#%% TESTING 
+
 state = env.reset()
-
-
-for i in range(600):
+env.position = 3
+env.velocity = -6.0
+env.mass = 1.0
+env.referencepoint = 6
+state = [env.referencepoint,env.velocity,env.position]
+S = [state] #States history for test
+for i in range(500):    
     action = select_action(FloatTensor([state]))
     a = action.data.numpy()[0,0]
     state,reward,done,_ = env.step(a)
+    S.append(state)
     print(i,state,a,reward,done)
+    if done:
+        print("out of bounds")
     env.render()
+S = np.array(S)    
+
+#%% Plotting the policy in the state space.
+x = np.linspace(0, 10, 50)
+v = np.linspace(-20, 20, 60)
+
+A = np.zeros((len(x),len(v)))
+for i,xi in enumerate(x):
+    for j,vj in enumerate(v):
+        A[i,j] = select_action(FloatTensor([[env.referencepoint,vj,xi]])).data.numpy()[0,0]
+plt.figure(3)
+plt.contourf(v,x,A,levels=[0.1,1]);plt.scatter(S[:,1],S[:,2],c='r'); plt.plot(S[0,0],S[0,1],c = 'k', marker ='*'); plt.scatter(S[-1,0],S[-1,1],c = 'k', marker ='s')
+plt.figure(4)
+plt.plot(S[:,2])

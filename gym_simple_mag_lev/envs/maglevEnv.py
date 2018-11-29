@@ -26,15 +26,17 @@ class MagLevEnv(gym.Env):
         
         #Observation and Action spaces.
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-20.0,-0.1]), np.array([20.0, 10.0]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([1,-20.0,-0.1]), np.array([9,20.0, 10.0]), dtype=np.float32)
     
         
         self.acceleration = 0
         self.velocity = 0 
-        self.position = 0
         
-
+        self.position = 0
         self.referencepoint = 6
+        self.lastAction = 0
+        #
+        
         
     def step(self, action):
         """
@@ -67,6 +69,7 @@ class MagLevEnv(gym.Env):
         """
         
         self._take_action(action)
+        self.lastAction = action
         done = False
         reward = self._get_reward()
         obs = self._get_state()
@@ -89,44 +92,52 @@ class MagLevEnv(gym.Env):
         """
         
         #Randomly set position of our object(solid metallic ball).
-        start = random.randint(1,9)
-        self.position = start
+        self.mass = 2*np.random.rand()
+        x = random.randint(0,10)
+        v = (2*np.random.rand()-1)*20
         
+        self.position = x
+        
+        x = random.randint(0,10)
+        self.referencepoint = x 
         
         #Randomly set velocity of our object(solid metallic ball).
-        start = random.randint(-4,4)
-        self.velocity = start
+        
+        self.velocity = v
         
         self.acceleration = 0
         
+        #xerror = -np.abs(self.referencepoint - self.position)
         
-        return np.asarray([self.velocity,self.position])
+        return np.asarray([self.referencepoint,self.velocity,self.position])
 
-    def render(self):
+    def render(self, figid = 0):
         
         """
-        Render on screen the current state of the environment.
-        
-        Returns Nothing.
-        -------
-        Parameters: Empty
+        Shows a ball with the position indicated by the position. Velocity is 
+        proportional to the size of the ball. The current action is shown in 
+        color of the ball with blue indicating no upward force and red if the
+        force is active.
         """
         
-        plt.figure(0)
-        circle = plt.Circle((0,self.position), radius= 0.5, color = 'black')
-        #line = plt.Line2D(0,self.referencepoint,3)
+        plt.figure(figid)
+        r = np.max((0.3,np.abs(self.velocity)/10.0))
+        c = 'b'
+        if self.lastAction:
+            c = 'r'
+        
+        
+        circle = plt.Circle((0,self.position), radius= r, color = c)
+        
         ax=plt.gca()
         ax.clear()
-        
-        #plt.fill_betweenx(self.referencepoint,-3,3,linewidth=3,color = 'gray')
-        plt.hlines(self.referencepoint,-3,3,'gray',linewidth = 3)
         ax.add_patch(circle)
-        #ax.add_patch(line)
-        
         plt.axis('scaled')
-        plt.xlim(-3,3)
-        plt.ylim(-2,12)
-        
+        plt.xlim(-10,10)
+        plt.ylim(-1,11)
+        plt.plot([-10,10],[self.referencepoint]*2)
+        plt.plot([-10,10],[0]*2)
+        plt.plot([-10,10],[10]*2)
         plt.pause(0.00001)
         plt.show()
 
@@ -173,8 +184,8 @@ class MagLevEnv(gym.Env):
         -------
         Parameters: Empty.
         """
-        
-        obs = np.asarray(list((self.velocity,self.position)))
+        #xerror = -np.abs(self.referencepoint - self.position)
+        obs = np.asarray(list((self.referencepoint,self.velocity,self.position)))
         
         
         return obs
@@ -185,13 +196,10 @@ class MagLevEnv(gym.Env):
 
     def _get_reward(self):
         
-        reward = -np.abs(self.position-self.referencepoint)
-        if abs(self.position-self.referencepoint) <= 0.5:
-            
-            
-            reward += 2
-#        elif self.position-self.referencepoint <= 0.3:
-#            reward += 2
-        else:
-            return reward
+        state = self._get_state()
+        reward =  -np.abs(float(state[2] - self.referencepoint))#*float(np.abs(next_state[0])<0.1)
+        if np.abs(reward)<0.5:
+            reward+=2.0
+        if not self.observation_space.contains(state):
+            reward-=1.0            
         return reward
