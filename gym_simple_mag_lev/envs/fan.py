@@ -205,8 +205,8 @@ v = np.linspace(-20, 20, 60)
 A = np.zeros((len(x),len(v)))
 for i,xi in enumerate(x):
     for j,vj in enumerate(v):
-        A[i,j] = select_action(FloatTensor([[env.referencepoint,vj,xi]])).data.numpy()[0,0]
+        A[i,j] = select_action(FloatTensor([[vj,xi,env.referencepoint]])).data.numpy()[0,0]
 plt.figure(3)
-plt.contourf(v,x,A,levels=[0.1,1]);plt.scatter(S[:,1],S[:,2],c='r'); plt.plot(S[0,0],S[0,1],c = 'k', marker ='*'); plt.scatter(S[-1,0],S[-1,1],c = 'k', marker ='s')
+plt.contourf(v,x,A,levels=[0.1,1]);plt.scatter(S[:,0],S[:,1],c='r'); plt.plot(S[0,0],S[0,1],c = 'k', marker ='*'); plt.scatter(S[-1,0],S[-1,1],c = 'k', marker ='s')
 plt.figure(4)
-plt.plot(S[:,2])
+plt.plot(S[:,1])
