@@ -53,8 +53,8 @@ class ReplayMemory:
 class Network(nn.Module):
     def __init__(self):
         nn.Module.__init__(self)
-        self.l1 = nn.Linear(3, 200)
-        self.l3 = nn.Linear(200, 2)
+        self.l1 = nn.Linear(4, 200)
+        self.l3 = nn.Linear(200, 1)
 
     def forward(self, x):
         x = F.relu(self.l1(x))
@@ -73,46 +73,55 @@ steps_done = 0
 episode_durations = []
 
 
-def select_action(state):
+def select_action(state, actions = None):
     global steps_done
+    q_values = []
     sample = random.random()
     eps_threshold = EPS_END + (EPS_START - EPS_END) * math.exp(-1. * steps_done / EPS_DECAY)
     steps_done += 1
     if sample > eps_threshold:
-        return model(Variable(state, volatile=True).type(FloatTensor)).data.max(1)[1].view(1, 1)
+        for action in actions:
+            q_value = model(Variable(FloatTensor([np.append(state,[action],axis=0)]), volatile=True).type(FloatTensor)).data.view(1, 1)
+            q_value = q_value.data.numpy()[0,0]
+            q_values.append(q_value)
+        return LongTensor([[q_values.index(max(q_values))]])
+            
     else:
-        return LongTensor([[random.randrange(2)]])
+        return LongTensor([[random.randrange(0,len(actions))]])
 
 
 def run_episode(e, environment):
     
+    action_space = np.linspace(0,1,2)
     state = environment.reset() 
     ref = environment.referencepoint
-    state = np.append(state,[ref],axis=0)
+    state_ref = np.append(state,[ref],axis=0)
     steps = 0
     while True:
         steps += 1
         
-        action = select_action(FloatTensor([state]))
+        action = select_action(state_ref, action_space)
+        state_ref_a = np.append(state_ref,[action.data.numpy()[0,0]],axis=0)
         a = action.data.numpy()[0,0]
         next_state, reward, done, _ = environment.step(a)
         #ref = environment.referencepoint
-        next_state = np.append(next_state,[ref],axis=0)
+        next_state_ref = np.append(next_state,[ref],axis=0)
+        a_next = select_action(next_state_ref,action_space)
+        next_state_ref_a = np.append(next_state_ref,[a_next.data.numpy()[0,0]],axis=0)
 
-
-        memory.push((FloatTensor([state]),
+        memory.push((FloatTensor([state_ref_a]),
                      action,  # action is already a tensor
-                     FloatTensor([next_state]),
+                     FloatTensor([next_state_ref_a]),
                      FloatTensor([reward])))
 
         
         learn()
 
-        state = next_state
+        state_ref = next_state_ref
 
         if steps > 500:
-            print("Episode %s Final Position Error %s " %(e, np.abs(next_state[1]-ref)))
-            episode_durations.append(np.abs(next_state[1]-ref))
+            print("Episode %s Final Position Error %s " %(e, np.abs(next_state_ref[1]-ref)))
+            episode_durations.append(np.abs(next_state_ref[1]-ref))
             plotError()
             
             break
@@ -133,7 +142,7 @@ def learn():
     batch_next_state = Variable(torch.cat(batch_next_state))
 
     # current Q values are estimated by NN for all actions
-    current_q_values = model(batch_state).gather(1, batch_action)
+    current_q_values = model(batch_state).gather(1, LongTensor([[0]]*BATCH_SIZE))
     # expected Q values are estimated from actions which gives maximum Q value
     max_next_q_values = model(batch_next_state).detach().max(1)[0]
         
@@ -179,33 +188,44 @@ print('Complete')
 
 #%% TESTING 
 
+action_space = np.linspace(0,1,2)
 state = env.reset()
+
 env.position = 0.2
-env.velocity = -6.0
-#env.mass = 0.35615
+env.velocity = -2.0
+#env.mass = 1.0
 env.referencepoint = 0.15
-state = [env.velocity,env.position,env.referencepoint]
-S = [state] #States history for test
+state = env._get_state()
+state = np.append(state,[env.referencepoint],axis=0)
+action = select_action(state,action_space)#.data.numpy()[0,0]
+#state = np.append(state,[action.data.numpy()[0,0]],axis=0)
+S = [np.append(state,[action.data.numpy()[0,0]],axis=0)] #States history for test
+
 for i in range(500):    
-    action = select_action(FloatTensor([state]))
-    a = action.data.numpy()[0,0]
-    state,reward,done,_ = env.step(a)
-    state=np.append(state,[env.referencepoint],axis=0) 
-    S.append(state)
-    print(i,env._get_state(),state[2],a,reward,done)
+    
+    
+    state,reward,done,_ = env.step(action.data.numpy()[0,0])
+    env.render()
+    state = np.append(state,[env.referencepoint],axis=0)
+    action = select_action(state,action_space)#.data.numpy()[0,0]
+    
+    #state = np.append(state,[action.data.numpy()[0,0]],axis=0)
+    S.append(np.append(state,[action.data.numpy()[0,0]],axis=0))
+    print(i,state,reward,done)
     if done:
         print("out of bounds")
-    env.render()
-S = np.array(S)    
+    
+S = np.array(S)   
 
 #%% Plotting the policy in the state space.
-x = np.linspace(0, 10, 50)
-v = np.linspace(-20, 20, 60)
+x = np.linspace(0.0, 0.2032, 50)
+v = np.linspace(-10.0, 10.0, 50)
+action_space = np.linspace(0,1,2)
 
 A = np.zeros((len(x),len(v)))
 for i,xi in enumerate(x):
     for j,vj in enumerate(v):
-        A[i,j] = select_action(FloatTensor([[vj,xi,env.referencepoint]])).data.numpy()[0,0]
+        A[i,j] = select_action([vj,xi,env.referencepoint], action_space).data.numpy()[0,0]
 plt.figure(3)
 plt.contourf(v,x,A,levels=[0.1,1]);plt.scatter(S[:,0],S[:,1],c='r'); plt.plot(S[0,0],S[0,1],c = 'k', marker ='*'); plt.scatter(S[-1,0],S[-1,1],c = 'k', marker ='s')
 plt.figure(4)
