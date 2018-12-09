@@ -62,7 +62,7 @@ class Network(nn.Module):
         return x
 
 env = MagLevEnv()
-env.referencepoint = 8.0
+#env.referencepoint = 8.0
 
 model = Network()
 if use_cuda:
@@ -180,10 +180,10 @@ print('Complete')
 #%% TESTING 
 
 state = env.reset()
-env.position = 0
-env.velocity = -2.0
-env.mass = 1.0
-env.referencepoint = 8.0
+env.position = 0.2
+env.velocity = -6.0
+#env.mass = 0.35615
+env.referencepoint = 0.15
 state = [env.velocity,env.position,env.referencepoint]
 S = [state] #States history for test
 for i in range(500):    

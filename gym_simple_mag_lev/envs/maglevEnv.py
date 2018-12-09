@@ -12,7 +12,7 @@ class MagLevEnv(gym.Env):
     
     
     GRAVITY = 9.8
-    FORCE = GRAVITY*2
+    FORCE = GRAVITY*1.1
     
     
     
@@ -22,18 +22,18 @@ class MagLevEnv(gym.Env):
         logging.info("MAGLevEnv - Version {}".format(self.__version__))
         
         self.timestep = 0.01
-        self.mass = 1
+        self.mass = 0.35615
         
         #Observation and Action spaces.
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-20.0,-0.1]), np.array([20.0, 10.0]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-10.0,0.0]), np.array([10.0, 0.2032]), dtype=np.float32)
     
         
         self.acceleration = 0
         self.velocity = 0 
         
         self.position = 0
-        self.referencepoint = 6
+        self.referencepoint = 0.1
         self.lastAction = 0
         #
         
@@ -92,17 +92,15 @@ class MagLevEnv(gym.Env):
         """
         
         #Randomly set position of our object(solid metallic ball).
-        self.mass = 2*np.random.rand()
-        x = random.randint(0,10)
-        v = (2*np.random.rand()-1)*20
-        
+        #self.mass = 2*np.random.rand()
+        x = random.uniform(0.0, 0.2032)
         self.position = x
         
-        x = random.randint(0,10)
-        self.referencepoint = x 
+        r = random.uniform(0.02, 0.1999)
+        self.referencepoint = r 
         
         #Randomly set velocity of our object(solid metallic ball).
-        
+        v = (2*np.random.rand()-1)*10
         self.velocity = v
         
         self.acceleration = 0
@@ -198,7 +196,7 @@ class MagLevEnv(gym.Env):
         
         state = self._get_state()
         reward =  -np.abs(float(state[1] - self.referencepoint))#*float(np.abs(next_state[0])<0.1)
-        if np.abs(reward)<0.5:
+        if np.abs(float(state[1] - self.referencepoint))<0.01:
             reward+=2.0
         if not self.observation_space.contains(state):
             reward-=1.0            
