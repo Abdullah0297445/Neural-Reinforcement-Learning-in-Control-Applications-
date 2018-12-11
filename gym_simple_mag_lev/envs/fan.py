@@ -187,12 +187,12 @@ print('Complete')
 #plt.pause(0.5)
 
 #%% TESTING 
-
+plt.close('all')
 action_space = np.linspace(0,1,2)
 state = env.reset()
-
+env.mass = 0.30
 env.position = 0.2
-env.velocity = -2.0
+env.velocity = 0.0
 #env.mass = 1.0
 env.referencepoint = 0.15
 state = env._get_state()
@@ -205,19 +205,19 @@ for i in range(500):
     
     
     state,reward,done,_ = env.step(action.data.numpy()[0,0])
-    env.render()
+    #env.render()
     state = np.append(state,[env.referencepoint],axis=0)
     action = select_action(state,action_space)#.data.numpy()[0,0]
     
     #state = np.append(state,[action.data.numpy()[0,0]],axis=0)
     S.append(np.append(state,[action.data.numpy()[0,0]],axis=0))
-    print(i,state,reward,done)
+    print(i,state,action.data.numpy()[0,0],reward,done)
     if done:
         print("out of bounds")
     
 S = np.array(S)   
 
-#%% Plotting the policy in the state space.
+# Plotting the policy in the state space.
 x = np.linspace(0.0, 0.2032, 50)
 v = np.linspace(-10.0, 10.0, 50)
 action_space = np.linspace(0,1,2)

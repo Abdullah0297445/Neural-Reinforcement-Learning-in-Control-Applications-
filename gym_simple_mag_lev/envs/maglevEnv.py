@@ -26,7 +26,7 @@ class MagLevEnv(gym.Env):
         
         #Observation and Action spaces.
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-10.0,0.0]), np.array([10.0, 0.2032]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-7.0,0.0]), np.array([7.0, 0.2032]), dtype=np.float32)
     
         
         self.acceleration = 0
@@ -35,6 +35,9 @@ class MagLevEnv(gym.Env):
         self.position = 0
         self.referencepoint = 0.1
         self.lastAction = 0
+        #self.I_sq = 0
+        self.magpos = 0.2032
+        #self.k = 13440
         #
         
         
@@ -92,7 +95,7 @@ class MagLevEnv(gym.Env):
         """
         
         #Randomly set position of our object(solid metallic ball).
-        #self.mass = 2*np.random.rand()
+        self.mass = random.uniform(0.05, 0.5)
         x = random.uniform(0.0, 0.2032)
         self.position = x
         
@@ -100,7 +103,7 @@ class MagLevEnv(gym.Env):
         self.referencepoint = r 
         
         #Randomly set velocity of our object(solid metallic ball).
-        v = (2*np.random.rand()-1)*10
+        v = (2*np.random.rand()-1)*7
         self.velocity = v
         
         self.acceleration = 0
@@ -153,11 +156,22 @@ class MagLevEnv(gym.Env):
         
         Parameters: Action '1' or '2' as an int value. 
         """
+        #self.I = action
         
         v0 = self.velocity
-        x0 = self.position   
+        x0 = self.position 
+        k = 13440
+        r = self.magpos - x0
         
-        a = ( ( action*MagLevEnv.FORCE / self.mass ) - MagLevEnv.GRAVITY )
+        I_sq = ( 0.75 * 9.8 * (r)**2 ) / k
+        I_sq = min(2, I_sq)
+        Force = k * I_sq / (r)**2 
+        #Force = MagLevEnv.FORCE
+        
+        if (r) < 0:
+            Force = -1 * Force
+        
+        a = ( ( action * Force / self.mass ) - MagLevEnv.GRAVITY )
          
         dv = ( a * self.timestep )
         v = v0 + dv
