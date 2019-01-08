@@ -15,6 +15,7 @@ import torch.nn.functional as F
 import matplotlib.pyplot as plt
 from maglevEnv import MagLevEnv
 import numpy as np
+import pickle
 
 # hyper parameters
 EPISODES = 80  # number of episodes
@@ -71,7 +72,8 @@ memory = ReplayMemory(10000)
 optimizer = optim.Adam(model.parameters(), LR)
 steps_done = 0
 episode_durations = []
-
+position = []
+vel = 0 
 
 def select_action(state, actions = None):
     global steps_done
@@ -82,7 +84,7 @@ def select_action(state, actions = None):
     if sample > eps_threshold:
         for action in actions:
             q_value = model(Variable(FloatTensor([np.append(state,[action],axis=0)]), volatile=True).type(FloatTensor)).data.view(1, 1)
-            q_value = q_value.data.numpy()[0,0]
+            q_value = q_value.data.cpu().numpy()[0,0]
             q_values.append(q_value)
         return LongTensor([[q_values.index(max(q_values))]])
             
@@ -92,8 +94,22 @@ def select_action(state, actions = None):
 
 def run_episode(e, environment):
     
+    global vel
+    
+      
     action_space = np.linspace(0,1,2)
-    state = environment.reset() 
+    state = environment.reset()
+    
+    
+#    position.append(state[0])
+#    position.append(state[0])
+#    
+#        
+#    
+#    vel += ( float(position[1]) - float(position[0]) )/env.timestep
+#    
+#    state = np.append([vel],state,axis=0)
+    
     ref = environment.referencepoint
     state_ref = np.append(state,[ref],axis=0)
     steps = 0
@@ -101,13 +117,20 @@ def run_episode(e, environment):
         steps += 1
         
         action = select_action(state_ref, action_space)
-        state_ref_a = np.append(state_ref,[action.data.numpy()[0,0]],axis=0)
-        a = action.data.numpy()[0,0]
+        state_ref_a = np.append(state_ref,[action.data.cpu().numpy()[0,0]],axis=0)
+        a = action.data.cpu().numpy()[0,0]
         next_state, reward, done, _ = environment.step(a)
         #ref = environment.referencepoint
+#        position[0] = position[1]
+#        position[1] = next_state
+#        
+#        vel += ( float(position[1]) - float(position[0]) )/env.timestep
+#    
+#        next_state = np.append([vel],next_state,axis=0)
+        
         next_state_ref = np.append(next_state,[ref],axis=0)
         a_next = select_action(next_state_ref,action_space)
-        next_state_ref_a = np.append(next_state_ref,[a_next.data.numpy()[0,0]],axis=0)
+        next_state_ref_a = np.append(next_state_ref,[a_next.data.cpu().numpy()[0,0]],axis=0)
 
         memory.push((FloatTensor([state_ref_a]),
                      action,  # action is already a tensor
@@ -122,7 +145,7 @@ def run_episode(e, environment):
         if steps > 500:
             print("Episode %s Final Position Error %s " %(e, np.abs(next_state_ref[1]-ref)))
             episode_durations.append(np.abs(next_state_ref[1]-ref))
-            plotError()
+            #plotError()
             
             break
 
@@ -165,7 +188,7 @@ def plotError():
     durations_t = torch.FloatTensor(episode_durations)
     plt.title("Total Steps Done : " + str(steps_done))
     plt.xlabel('Episode')
-    plt.ylabel('Final Position Error')
+    plt.ylabel('Final Position Error(meters)')
     plt.plot(durations_t.numpy())
     # take 100 episode averages and plot them too
 #    H = 10
@@ -190,28 +213,29 @@ print('Complete')
 plt.close('all')
 action_space = np.linspace(0,1,2)
 state = env.reset()
-env.mass = 0.30
-env.position = 0.2
+env.mass = 0.2
+env.position = 0.0
 env.velocity = 0.0
 #env.mass = 1.0
-env.referencepoint = 0.15
+env.referencepoint = 0.14
 state = env._get_state()
 state = np.append(state,[env.referencepoint],axis=0)
 action = select_action(state,action_space)#.data.numpy()[0,0]
 #state = np.append(state,[action.data.numpy()[0,0]],axis=0)
-S = [np.append(state,[action.data.numpy()[0,0]],axis=0)] #States history for test
+S = [np.append(state,[action.data.cpu().numpy()[0,0]],axis=0)] #States history for test
 
 for i in range(500):    
     
     
-    state,reward,done,_ = env.step(action.data.numpy()[0,0])
-    #env.render()
+    state,reward,done,_ = env.step(action.data.cpu().numpy()[0,0])
+    
+    env.render()
     state = np.append(state,[env.referencepoint],axis=0)
     action = select_action(state,action_space)#.data.numpy()[0,0]
     
     #state = np.append(state,[action.data.numpy()[0,0]],axis=0)
-    S.append(np.append(state,[action.data.numpy()[0,0]],axis=0))
-    print(i,state,action.data.numpy()[0,0],reward,done)
+    S.append(np.append(state,[action.data.cpu().numpy()[0,0]],axis=0))
+    print(i,state,action.data.cpu().numpy()[0,0],reward,done,np.abs(env.velocity-env.estimatedvel))
     if done:
         print("out of bounds")
     
@@ -219,14 +243,28 @@ S = np.array(S)
 
 # Plotting the policy in the state space.
 x = np.linspace(0.0, 0.2032, 50)
-v = np.linspace(-10.0, 10.0, 50)
+v = np.linspace(-6.0, 6.0, 50)
 action_space = np.linspace(0,1,2)
 
 A = np.zeros((len(x),len(v)))
 for i,xi in enumerate(x):
     for j,vj in enumerate(v):
-        A[i,j] = select_action([vj,xi,env.referencepoint], action_space).data.numpy()[0,0]
+        A[i,j] = select_action([vj,xi,env.referencepoint], action_space).data.cpu().numpy()[0,0]
+SUP = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 plt.figure(3)
+plt.title('Policy')
+plt.xlabel("Velocity (in ms2)".translate(SUP))
+plt.ylabel("Position (in meters)")
 plt.contourf(v,x,A,levels=[0.1,1]);plt.scatter(S[:,0],S[:,1],c='r'); plt.plot(S[0,0],S[0,1],c = 'k', marker ='*'); plt.scatter(S[-1,0],S[-1,1],c = 'k', marker ='s')
+
 plt.figure(4)
+plt.title("Convergence Graph")
+plt.xlabel("Episodes")
+plt.ylabel("Position (in meters)")
+plt.plot([0,500],[env.referencepoint]*2)
 plt.plot(S[:,1])
+plt.legend(['Reference point','Stability'])
+#fig , ax = plt.subplot()
+#ax.show()
+#
+#pickle.dump(fig, open("error2.pickle","wb"))

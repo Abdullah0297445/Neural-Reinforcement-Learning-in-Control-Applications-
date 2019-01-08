@@ -1,10 +1,9 @@
 import gym
-from gym import error, spaces, utils
+from gym import spaces, utils, error
 from gym.utils import seeding
 import logging
 import numpy as np
 import matplotlib.pyplot as plt
-
 import random
 
 class MagLevEnv(gym.Env):
@@ -12,7 +11,7 @@ class MagLevEnv(gym.Env):
     
     
     GRAVITY = 9.8
-    FORCE = GRAVITY*1.1
+    FORCE = GRAVITY*0.75
     
     
     
@@ -26,12 +25,13 @@ class MagLevEnv(gym.Env):
         
         #Observation and Action spaces.
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-7.0,0.0]), np.array([7.0, 0.2032]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-6.0,0.0]), np.array([6.0,0.2032]))
     
         
         self.acceleration = 0
         self.velocity = 0 
         
+        self.estimatedvel = 0
         self.position = 0
         self.referencepoint = 0.1
         self.lastAction = 0
@@ -99,11 +99,11 @@ class MagLevEnv(gym.Env):
         x = random.uniform(0.0, 0.2032)
         self.position = x
         
-        r = random.uniform(0.02, 0.1999)
+        r = random.uniform(0.05, 0.1950)
         self.referencepoint = r 
         
         #Randomly set velocity of our object(solid metallic ball).
-        v = (2*np.random.rand()-1)*7
+        v = (2*np.random.rand()-1)*6
         self.velocity = v
         
         self.acceleration = 0
@@ -122,23 +122,28 @@ class MagLevEnv(gym.Env):
         """
         
         plt.figure(figid)
-        r = np.max((0.3,np.abs(self.velocity)/10.0))
+        r = np.max((0.3,np.abs(self.velocity)/6.0))
         c = 'b'
         if self.lastAction:
             c = 'r'
         
         
-        circle = plt.Circle((0,self.position), radius= r, color = c)
+        circle = plt.Circle((0,self.position*39.37), radius= r, color = c)
         
         ax=plt.gca()
         ax.clear()
         ax.add_patch(circle)
         plt.axis('scaled')
-        plt.xlim(-10,10)
-        plt.ylim(-1,11)
-        plt.plot([-10,10],[self.referencepoint]*2)
-        plt.plot([-10,10],[0]*2)
-        plt.plot([-10,10],[10]*2)
+        plt.xlim(-5,5)
+        plt.ylim(-1,10)
+        plt.plot([-5,5],[self.referencepoint*39.37]*2)
+        plt.plot([-5,5],[0]*2)
+        plt.plot([-5,5],[8]*2)
+        plt.title("Rendering")
+        plt.xlabel(' ')
+        plt.ylabel('Position (in inches)')
+        plt.legend(['Ref Point','Ground','Magnet'], bbox_to_anchor=(1, 1),
+          ncol=1)
         plt.pause(0.00001)
         plt.show()
 
@@ -163,7 +168,7 @@ class MagLevEnv(gym.Env):
         k = 13440
         r = self.magpos - x0
         
-        I_sq = ( 0.75 * 9.8 * (r)**2 ) / k
+        I_sq = ( MagLevEnv.FORCE * (r)**2 ) / k
         I_sq = min(2, I_sq)
         Force = k * I_sq / (r)**2 
         #Force = MagLevEnv.FORCE
@@ -177,7 +182,8 @@ class MagLevEnv(gym.Env):
         v = v0 + dv
         dx = ( v0 * self.timestep ) + 0.5 * (a * self.timestep**2) 
         x = x0 + dx
-    
+        
+        self.estimatedvel = ( float(x) - float(x0) )/ self.timestep
         
         self.acceleration = a
         self.velocity = v
@@ -197,7 +203,7 @@ class MagLevEnv(gym.Env):
         Parameters: Empty.
         """
         #xerror = -np.abs(self.referencepoint - self.position)
-        obs = np.asarray(list((self.velocity,self.position)))
+        obs = np.asarray([self.velocity,self.position])
         
         
         return obs
@@ -209,9 +215,11 @@ class MagLevEnv(gym.Env):
     def _get_reward(self):
         
         state = self._get_state()
-        reward =  -np.abs(float(state[1] - self.referencepoint))#*float(np.abs(next_state[0])<0.1)
+        reward =  -np.abs(float(state[1] - self.referencepoint)) #*float(np.abs(next_state[0])<0.1)
         if np.abs(float(state[1] - self.referencepoint))<0.01:
             reward+=2.0
+            if abs(self.velocity)<0.2:
+                reward+=1.0
         if not self.observation_space.contains(state):
             reward-=1.0            
         return reward
