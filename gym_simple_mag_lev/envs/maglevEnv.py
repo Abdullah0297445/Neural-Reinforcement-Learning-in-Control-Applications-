@@ -26,7 +26,7 @@ class MagLevEnv(gym.Env):
         
         #Observation and Action spaces.
         self.action_space = spaces.Discrete(2)
-        self.observation_space = spaces.Box(np.array([-20.0,-0.1]), np.array([20.0, 10.0]), dtype=np.float32)
+        self.observation_space = spaces.Box(np.array([-20.0,-0.1]), np.array([20.0, 10.0]))
     
         
         self.acceleration = 0
@@ -98,7 +98,7 @@ class MagLevEnv(gym.Env):
         
         self.position = x
         
-        x = random.randint(0,10)
+        x = random.randint(1,9)
         self.referencepoint = x 
         
         #Randomly set velocity of our object(solid metallic ball).
@@ -133,11 +133,16 @@ class MagLevEnv(gym.Env):
         ax.clear()
         ax.add_patch(circle)
         plt.axis('scaled')
-        plt.xlim(-10,10)
+        plt.xlim(-5,5)
         plt.ylim(-1,11)
-        plt.plot([-10,10],[self.referencepoint]*2)
-        plt.plot([-10,10],[0]*2)
-        plt.plot([-10,10],[10]*2)
+        plt.plot([-5,5],[self.referencepoint]*2)
+        plt.plot([-5,5],[-0.1]*2)
+        plt.plot([-5,5],[10]*2)
+        plt.title("Rendering")
+        plt.xlabel(' ')
+        plt.ylabel('Position (in inches)')
+        plt.legend(['Ref Point','Ground','Magnet'], bbox_to_anchor=(1, 1),
+          ncol=1)
         plt.pause(0.00001)
         plt.show()
 

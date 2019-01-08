@@ -94,7 +94,7 @@ def run_episode(e, environment):
         steps += 1
         
         action = select_action(FloatTensor([state]))
-        a = action.data.numpy()[0,0]
+        a = action.data.cpu().numpy()[0,0]
         next_state, reward, done, _ = environment.step(a)
         #ref = environment.referencepoint
         next_state = np.append(next_state,[ref],axis=0)
@@ -188,7 +188,7 @@ state = [env.velocity,env.position,env.referencepoint]
 S = [state] #States history for test
 for i in range(500):    
     action = select_action(FloatTensor([state]))
-    a = action.data.numpy()[0,0]
+    a = action.data.cpu().numpy()[0,0]
     state,reward,done,_ = env.step(a)
     state=np.append(state,[env.referencepoint],axis=0) 
     S.append(state)
@@ -205,8 +205,18 @@ v = np.linspace(-20, 20, 60)
 A = np.zeros((len(x),len(v)))
 for i,xi in enumerate(x):
     for j,vj in enumerate(v):
-        A[i,j] = select_action(FloatTensor([[vj,xi,env.referencepoint]])).data.numpy()[0,0]
+        A[i,j] = select_action(FloatTensor([[vj,xi,env.referencepoint]])).data.cpu().numpy()[0,0]
+SUP = str.maketrans("0123456789", "⁰¹²³⁴⁵⁶⁷⁸⁹")
 plt.figure(3)
+plt.title('Policy')
+plt.xlabel("Velocity (in ms2)".translate(SUP))
+plt.ylabel("Position (in meters)")
 plt.contourf(v,x,A,levels=[0.1,1]);plt.scatter(S[:,0],S[:,1],c='r'); plt.plot(S[0,0],S[0,1],c = 'k', marker ='*'); plt.scatter(S[-1,0],S[-1,1],c = 'k', marker ='s')
+
 plt.figure(4)
+plt.title("Convergence Graph")
+plt.xlabel("Episodes")
+plt.ylabel("Position (in meters)")
+plt.plot([0,500],[env.referencepoint]*2)
 plt.plot(S[:,1])
+plt.legend(['Reference point','Stability'])
