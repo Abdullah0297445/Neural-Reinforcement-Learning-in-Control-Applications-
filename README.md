@@ -1,8 +1,9 @@
-# Neural Reinforcement Learning in Control Applications
+# Neural Reinforcement Learning in Computer Gameplay and Control Applications
 
-This repository holds projects related to Reinforcement Learning with the help of neural networks. 
-I have added one such project for now : 
+This repository holds projects related to Reinforcement Learning with Deep Learning. 
+For now I have added two such projects : 
 
 ### 1. Maglev
+### 2. Streets Of Rage 3 - Genesis
 
-Check it out for more details. 
+Check them out for more details. 
